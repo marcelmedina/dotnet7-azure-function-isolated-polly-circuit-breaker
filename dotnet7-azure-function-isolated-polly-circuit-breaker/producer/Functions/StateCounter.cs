@@ -26,30 +26,37 @@ namespace producer.Functions
         {
             _logger.LogInformation("Request to increment counter.");
 
-            var isFailureEnabled =
-                _configuration.GetValue<bool>(Constants.FailureEnabled); // variable to control failure injection
-            var currentCounter =
-                _tableStorageHelper.GetCounter(Constants.Counter, Constants.PartitionKey, Constants.Row);
-
-            if (isFailureEnabled && currentCounter % 3 == 0)
+            try
             {
-                const string errorMessage = "Counter is divisible by 3, throwing exception.";
+                var isFailureEnabled = _configuration.GetValue<bool>(Constants.FailureEnabled); // variable to control failure injection
+                var currentCounter = _tableStorageHelper.GetCounter(Constants.Counter, Constants.PartitionKey, Constants.Row);
 
-                _logger.LogError(errorMessage);
-                throw new Exception(errorMessage);
+                if (isFailureEnabled && currentCounter % 3 == 0)
+                {
+                    const string errorMessage = "Counter is divisible by 3, throwing exception.";
+                    throw new Exception(errorMessage);
+                }
+
+                var counter = _tableStorageHelper.IncrementCounter(Constants.Counter, Constants.PartitionKey, Constants.Row);
+
+                var response = req.CreateResponse(HttpStatusCode.OK);
+                response.Headers.Add("Content-Type", "text/plain; charset=utf-8");
+
+                var message = $"Current counter: {counter}";
+                _logger.LogInformation(message);
+                response.WriteString(message);
+
+                return response;
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
 
-            var counter =
-                _tableStorageHelper.IncrementCounter(Constants.Counter, Constants.PartitionKey, Constants.Row);
-
-            var response = req.CreateResponse(HttpStatusCode.OK);
-            response.Headers.Add("Content-Type", "text/plain; charset=utf-8");
-
-            var message = $"Current counter: {counter}";
-            _logger.LogInformation(message);
-            response.WriteString(message);
-
-            return response;
+                var response = req.CreateResponse(HttpStatusCode.InternalServerError);
+                response.Headers.Add("Content-Type", "text/plain; charset=utf-8");
+                response.WriteString(ex.Message);
+                return response;
+            }
         }
     }
 }
