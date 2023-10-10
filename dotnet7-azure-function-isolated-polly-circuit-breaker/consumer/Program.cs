@@ -20,7 +20,7 @@ var host = new HostBuilder()
         var circuitBreakPolicy = Policy
             .HandleResult<HttpResponseMessage>(response => !response.IsSuccessStatusCode)
             .CircuitBreakerAsync(3, 
-                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(15),
                 onBreak: (_, _) =>
                 {
                     Console.Out.WriteLine("*****Open*****");
